@@ -148,7 +148,7 @@ class Embeddings(nn.Module):
                                        kernel_size=patch_size,
                                        stride=patch_size)
         self.position_embeddings = nn.Parameter(torch.zeros(1, n_patches+1, config.hidden_size))
-        self.cls_token = nn.Parameter(torch.zeros(1, 1, config.hidden_size))
+        self.position_embeddings = nn.Parameter(torch.zeros(1, n_patches + 1, config.hidden_size), requires_grad=False)
 
         self.dropout = Dropout(config.transformer["dropout_rate"])
 
@@ -299,6 +299,7 @@ class VisionTransformer(nn.Module):
             posemb_new = self.transformer.embeddings.position_embeddings
             if posemb.size() == posemb_new.size():
                 self.transformer.embeddings.position_embeddings.copy_(posemb)
+                # self.transformer.embeddings.position_embeddings.copy_(posemb_new)
             else:
                 logger.info("load_pretrained: resized variant: %s to %s" % (posemb.size(), posemb_new.size()))
                 ntok_new = posemb_new.size(1)
@@ -318,7 +319,7 @@ class VisionTransformer(nn.Module):
                 posemb_grid = ndimage.zoom(posemb_grid, zoom, order=1)
                 posemb_grid = posemb_grid.reshape(1, gs_new * gs_new, -1)
                 posemb = np.concatenate([posemb_tok, posemb_grid], axis=1)
-                self.transformer.embeddings.position_embeddings.copy_(np2th(posemb))
+                # self.transformer.embeddings.position_embeddings.copy_(np2th(posemb))
 
             for bname, block in self.transformer.encoder.named_children():
                 for uname, unit in block.named_children():
