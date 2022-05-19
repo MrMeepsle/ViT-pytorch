@@ -1,10 +1,8 @@
 import logging
 
 import torch
-
-from torchvision import transforms, datasets
 from torch.utils.data import DataLoader, RandomSampler, DistributedSampler, SequentialSampler
-
+from torchvision import transforms, datasets
 
 logger = logging.getLogger(__name__)
 
@@ -46,15 +44,26 @@ def get_loader(args):
                                    train=False,
                                    download=True,
                                    transform=transform_test) if args.local_rank in [-1, 0] else None
-    if args.dataset == "mnist":
+
+    elif args.dataset == "mnist":
         trainset = datasets.MNIST(root="./data",
-                                    train=True,
-                                    download=True,
-                                    transform=transform_train_gray)
+                                  train=True,
+                                  download=True,
+                                  transform=transform_train_gray)
         testset = datasets.MNIST(root="./data",
-                                   train=False,
-                                   download=True,
-                                   transform=transform_test_gray) if args.local_rank in [-1, 0] else None
+                                 train=False,
+                                 download=True,
+                                 transform=transform_test_gray) if args.local_rank in [-1, 0] else None
+
+    elif args.dataset == "mnist_fashion":
+        trainset = datasets.FashionMNIST(root="./data",
+                                  train=True,
+                                  download=True,
+                                  transform=transform_train_gray)
+        testset = datasets.FashionMNIST(root="./data",
+                                 train=False,
+                                 download=True,
+                                 transform=transform_test_gray) if args.local_rank in [-1, 0] else None
 
     else:
         trainset = datasets.CIFAR100(root="./data",
