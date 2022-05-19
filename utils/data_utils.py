@@ -55,6 +55,24 @@ def get_loader(args):
                                    train=False,
                                    download=True,
                                    transform=transform_test_gray) if args.local_rank in [-1, 0] else None
+    if args.dataset == "fashion-mnist":
+        trainset = datasets.FashionMNIST(root="./data",
+                                    train=True,
+                                    download=True,
+                                    transform=transform_train_gray)
+        testset = datasets.FashionMNIST(root="./data",
+                                   train=False,
+                                   download=True,
+                                   transform=transform_test_gray) if args.local_rank in [-1, 0] else None
+    if args.dataset == "stl-10":
+        trainset = datasets.STL10(root="./data",
+                                    split='train',
+                                    download=True,
+                                    transform=transform_train_gray)
+        testset = datasets.STL10(root="./data",
+                                   split='test',
+                                   download=True,
+                                   transform=transform_test_gray) if args.local_rank in [-1, 0] else None
 
     else:
         trainset = datasets.CIFAR100(root="./data",
