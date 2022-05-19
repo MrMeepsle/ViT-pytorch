@@ -295,6 +295,8 @@ def main():
                              "Positive power of 2: static loss scaling value.\n")
     args = parser.parse_args()
 
+    print(args)
+
     # Setup CUDA, GPU & distributed training
     if args.local_rank == -1:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

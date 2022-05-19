@@ -34,7 +34,7 @@ def get_testing():
 def get_b16_config():
     """Returns the ViT-B/16 configuration."""
     config = ml_collections.ConfigDict()
-    config.patches = ml_collections.ConfigDict({'size': (4, 4)})
+    config.patches = ml_collections.ConfigDict({'size': (7, 7)})
     config.hidden_size = 768
     config.transformer = ml_collections.ConfigDict()
     config.transformer.mlp_dim = 3072
@@ -86,7 +86,6 @@ def get_l32_config():
     config = get_l16_config()
     config.patches.size = (32, 32)
     return config
-
 
 def get_h14_config():
     """Returns the ViT-L/16 configuration."""
