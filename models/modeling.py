@@ -278,9 +278,15 @@ class VisionTransformer(nn.Module):
             return logits, attn_weights
 
     def init_from_scratch(self):
-        if self.zero_head:
-            nn.init.zeros_(self.head.weight)
-            nn.init.zeros_(self.head.bias)
+        with torch.no_grad():
+            if self.zero_head:
+                nn.init.zeros_(self.head.weight)
+                nn.init.zeros_(self.head.bias)
+
+            self.transformer.embeddings.cls_token.copy_(torch.rand(self.transformer.embeddings.cls_token.size()))
+            self.transformer.embeddings.position_embeddings.copy_(
+                torch.zeros(
+                    self.transformer.embeddings.position_embeddings.size()))  # here we can set the position embedding
 
     def load_from(self, weights):
         # this loads in the pretrained model
