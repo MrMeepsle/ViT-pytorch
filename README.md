@@ -30,7 +30,7 @@ wget https://storage.googleapis.com/vit_models/imagenet21k+imagenet2012/{MODEL_N
 
 ### 2. Train Model
 ```
-python3 train.py --name cifar10-100_500 --dataset cifar10 --model_type ViT-B_16 --pretrained_dir checkpoint/ViT-B_16.npz
+python3 train.py --name cifar10-100_500 --dataset cifar10 --model_type ViT-B_7 --pos_encoding zeros
 ```
 CIFAR-10 and CIFAR-100 are automatically download and train. In order to use a different dataset you need to customize [data_utils.py](./utils/data_utils.py).
 

@@ -63,7 +63,7 @@ def setup(args):
     if (args.pretrained_dir):
         model.load_from(np.load(args.pretrained_dir))
     else:
-        model.init_from_scratch()
+        model.init_from_scratch(args.pos_encoding)
     model.to(args.device)
     num_params = count_parameters(model)
 
@@ -294,6 +294,9 @@ def main():
                         help="Loss scaling to improve fp16 numeric stability. Only used when fp16 set to True.\n"
                              "0 (default value): dynamic loss scaling.\n"
                              "Positive power of 2: static loss scaling value.\n")
+    parser.add_argument("--pos_encoding", choices=["zeros", "random"],
+                        default="zeros",
+                        help="Positional encoding used for the transformer input.")
     args = parser.parse_args()
 
     # Setup CUDA, GPU & distributed training
