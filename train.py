@@ -1,33 +1,31 @@
 # coding=utf-8
 from __future__ import absolute_import, division, print_function
 
-import logging
 import argparse
+import logging
 import os
 import random
-import numpy as np
-
 from datetime import timedelta
 
+import numpy as np
 import torch
 import torch.distributed as dist
-
-from tqdm import tqdm
-from torch.utils.tensorboard import SummaryWriter
 from apex import amp
 from apex.parallel import DistributedDataParallel as DDP
+from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 
 from models.modeling import VisionTransformer, CONFIGS
-from utils.scheduler import WarmupLinearSchedule, WarmupCosineSchedule
 from utils.data_utils import get_loader
 from utils.dist_util import get_world_size
-
+from utils.scheduler import WarmupLinearSchedule, WarmupCosineSchedule
 
 logger = logging.getLogger(__name__)
 
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
+
     def __init__(self):
         self.reset()
 
@@ -62,7 +60,10 @@ def setup(args):
     num_classes = 10 if args.dataset == "cifar10" else 100
 
     model = VisionTransformer(config, args.img_size, zero_head=True, num_classes=num_classes)
-    model.load_from(np.load(args.pretrained_dir))
+    if (args.pretrained_dir):
+        model.load_from(np.load(args.pretrained_dir))
+    else:
+        model.init_from_scratch(args.pos_encoding)
     model.to(args.device)
     num_params = count_parameters(model)
 
@@ -75,7 +76,7 @@ def setup(args):
 
 def count_parameters(model):
     params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    return params/1000000
+    return params / 1000000
 
 
 def set_seed(args):
@@ -164,7 +165,7 @@ def train(args, model):
         model, optimizer = amp.initialize(models=model,
                                           optimizers=optimizer,
                                           opt_level=args.fp16_opt_level)
-        amp._amp_state.loss_scalers[0]._loss_scale = 2**20
+        amp._amp_state.loss_scalers[0]._loss_scale = 2 ** 20
 
     # Distributed training
     if args.local_rank != -1:
@@ -204,7 +205,7 @@ def train(args, model):
                 loss.backward()
 
             if (step + 1) % args.gradient_accumulation_steps == 0:
-                losses.update(loss.item()*args.gradient_accumulation_steps)
+                losses.update(loss.item() * args.gradient_accumulation_steps)
                 if args.fp16:
                     torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), args.max_grad_norm)
                 else:
@@ -244,20 +245,20 @@ def main():
     # Required parameters
     parser.add_argument("--name", required=True,
                         help="Name of this run. Used for monitoring.")
-    parser.add_argument("--dataset", choices=["cifar10", "cifar100"], default="cifar10",
+    parser.add_argument("--dataset", choices=["cifar10", "cifar100", "mnist", "mnist_fashion"], default="mnist",
                         help="Which downstream task.")
     parser.add_argument("--model_type", choices=["ViT-B_16", "ViT-B_32", "ViT-L_16",
-                                                 "ViT-L_32", "ViT-H_14", "R50-ViT-B_16"],
+                                                 "ViT-L_32", "ViT-H_14", "R50-ViT-B_16", "ViT-B_7"],
                         default="ViT-B_16",
                         help="Which variant to use.")
-    parser.add_argument("--pretrained_dir", type=str, default="checkpoint/ViT-B_16.npz",
+    parser.add_argument("--pretrained_dir", type=str,
                         help="Where to search for pretrained ViT models.")
     parser.add_argument("--output_dir", default="output", type=str,
                         help="The output directory where checkpoints will be written.")
 
-    parser.add_argument("--img_size", default=224, type=int,
+    parser.add_argument("--img_size", default=28, type=int,
                         help="Resolution size")
-    parser.add_argument("--train_batch_size", default=512, type=int,
+    parser.add_argument("--train_batch_size", default=64, type=int,
                         help="Total batch size for training.")
     parser.add_argument("--eval_batch_size", default=64, type=int,
                         help="Total batch size for eval.")
@@ -293,6 +294,9 @@ def main():
                         help="Loss scaling to improve fp16 numeric stability. Only used when fp16 set to True.\n"
                              "0 (default value): dynamic loss scaling.\n"
                              "Positive power of 2: static loss scaling value.\n")
+    parser.add_argument("--pos_encoding", choices=["zeros", "random"],
+                        default="zeros",
+                        help="Positional encoding used for the transformer input.")
     args = parser.parse_args()
 
     # Setup CUDA, GPU & distributed training

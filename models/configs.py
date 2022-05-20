@@ -64,6 +64,11 @@ def get_b32_config():
     config.patches.size = (32, 32)
     return config
 
+def get_b7_config():
+    """Returns the ViT-B/7 configuration."""
+    config = get_b16_config()
+    config.patches.size = (7, 7)
+    return config
 
 def get_l16_config():
     """Returns the ViT-L/16 configuration."""

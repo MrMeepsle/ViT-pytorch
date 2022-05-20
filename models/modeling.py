@@ -6,24 +6,17 @@ from __future__ import print_function
 import copy
 import logging
 import math
-
 from os.path import join as pjoin
 
 import torch
 import torch.nn as nn
-import numpy as np
-
 from torch.nn import CrossEntropyLoss, Dropout, Softmax, Linear, Conv2d, LayerNorm
 from torch.nn.modules.utils import _pair
-from scipy import ndimage
 
 import models.configs as configs
-
 from .modeling_resnet import ResNetV2
 
-
 logger = logging.getLogger(__name__)
-
 
 ATTENTION_Q = "MultiHeadDotProductAttention_1/query"
 ATTENTION_K = "MultiHeadDotProductAttention_1/key"
@@ -124,6 +117,7 @@ class Mlp(nn.Module):
 class Embeddings(nn.Module):
     """Construct the embeddings from patch, position embeddings.
     """
+
     def __init__(self, config, img_size, in_channels=3):
         super(Embeddings, self).__init__()
         self.hybrid = None
@@ -147,7 +141,7 @@ class Embeddings(nn.Module):
                                        out_channels=config.hidden_size,
                                        kernel_size=patch_size,
                                        stride=patch_size)
-        self.position_embeddings = nn.Parameter(torch.zeros(1, n_patches+1, config.hidden_size))
+        self.position_embeddings = nn.Parameter(torch.zeros(1, n_patches + 1, config.hidden_size), requires_grad=False)
         self.cls_token = nn.Parameter(torch.zeros(1, 1, config.hidden_size))
 
         self.dropout = Dropout(config.transformer["dropout_rate"])
@@ -192,10 +186,13 @@ class Block(nn.Module):
     def load_from(self, weights, n_block):
         ROOT = f"Transformer/encoderblock_{n_block}"
         with torch.no_grad():
-            query_weight = np2th(weights[pjoin(ROOT, ATTENTION_Q, "kernel")]).view(self.hidden_size, self.hidden_size).t()
+            query_weight = np2th(weights[pjoin(ROOT, ATTENTION_Q, "kernel")]).view(self.hidden_size,
+                                                                                   self.hidden_size).t()
             key_weight = np2th(weights[pjoin(ROOT, ATTENTION_K, "kernel")]).view(self.hidden_size, self.hidden_size).t()
-            value_weight = np2th(weights[pjoin(ROOT, ATTENTION_V, "kernel")]).view(self.hidden_size, self.hidden_size).t()
-            out_weight = np2th(weights[pjoin(ROOT, ATTENTION_OUT, "kernel")]).view(self.hidden_size, self.hidden_size).t()
+            value_weight = np2th(weights[pjoin(ROOT, ATTENTION_V, "kernel")]).view(self.hidden_size,
+                                                                                   self.hidden_size).t()
+            out_weight = np2th(weights[pjoin(ROOT, ATTENTION_OUT, "kernel")]).view(self.hidden_size,
+                                                                                   self.hidden_size).t()
 
             query_bias = np2th(weights[pjoin(ROOT, ATTENTION_Q, "bias")]).view(-1)
             key_bias = np2th(weights[pjoin(ROOT, ATTENTION_K, "bias")]).view(-1)
@@ -280,7 +277,24 @@ class VisionTransformer(nn.Module):
         else:
             return logits, attn_weights
 
+    def init_from_scratch(self, pos_encoding):
+        with torch.no_grad():
+            if self.zero_head:
+                nn.init.zeros_(self.head.weight)
+                nn.init.zeros_(self.head.bias)
+
+            self.transformer.embeddings.cls_token.copy_(torch.rand(self.transformer.embeddings.cls_token.size()))
+            if pos_encoding == "random":
+                self.transformer.embeddings.position_embeddings.copy_(
+                    torch.rand(
+                        self.transformer.embeddings.position_embeddings.size()))
+            elif pos_encoding == "zeros":
+                self.transformer.embeddings.position_embeddings.copy_(
+                    torch.zeros(
+                        self.transformer.embeddings.position_embeddings.size()))
+
     def load_from(self, weights):
+        # this loads in the pretrained model
         with torch.no_grad():
             if self.zero_head:
                 nn.init.zeros_(self.head.weight)
@@ -325,7 +339,8 @@ class VisionTransformer(nn.Module):
                     unit.load_from(weights, n_block=uname)
 
             if self.transformer.embeddings.hybrid:
-                self.transformer.embeddings.hybrid_model.root.conv.weight.copy_(np2th(weights["conv_root/kernel"], conv=True))
+                self.transformer.embeddings.hybrid_model.root.conv.weight.copy_(
+                    np2th(weights["conv_root/kernel"], conv=True))
                 gn_weight = np2th(weights["gn_root/scale"]).view(-1)
                 gn_bias = np2th(weights["gn_root/bias"]).view(-1)
                 self.transformer.embeddings.hybrid_model.root.gn.weight.copy_(gn_weight)
@@ -337,6 +352,7 @@ class VisionTransformer(nn.Module):
 
 
 CONFIGS = {
+    'ViT-B_7': configs.get_b7_config(),
     'ViT-B_16': configs.get_b16_config(),
     'ViT-B_32': configs.get_b32_config(),
     'ViT-L_16': configs.get_l16_config(),
