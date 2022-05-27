@@ -8,6 +8,8 @@ import logging
 import math
 from os.path import join as pjoin
 
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn import CrossEntropyLoss, Dropout, Softmax, Linear, Conv2d, LayerNorm
@@ -224,6 +226,61 @@ class Block(nn.Module):
             self.ffn_norm.bias.copy_(np2th(weights[pjoin(ROOT, MLP_NORM, "bias")]))
 
 
+class PosEncoding(nn.Module):
+    def __init__(self, size, type, plot=True):
+        """
+        :param channels: The last dimension of the tensor you want to apply pos emb to.
+        """
+        super(PosEncoding, self).__init__()
+        self.type = type
+        self.plot = plot
+        self.size = size
+
+        self.cached_embedding = None
+
+        if (self.type == "sin_cos"):
+            """
+            Adapted from https://github.com/tatp22/multidim-positional-encoding
+            License: https://github.com/tatp22/multidim-positional-encoding/blob/master/LICENSE
+            """
+
+            output_channels = int(np.ceil(self.size[-1] / 2) * 2)
+            self.channels = output_channels
+            inv_freq = 1.0 / (10000 ** (torch.arange(0, output_channels, 2).float() / output_channels))
+            self.register_buffer("inv_freq", inv_freq)
+
+    def forward(self):
+        if (self.type == "zeros"):
+            self.cached_embedding = torch.zeros(self.size)
+
+        elif (self.type == "random"):
+            self.cached_embedding = torch.rand(self.size)
+
+        elif (self.type == "sin_cos"):
+            """
+            :param tensor: A 3d tensor of size (batch_size, x, ch)
+            :return: Positional Encoding Matrix of size (batch_size, x, ch)
+            """
+            if self.cached_embedding is not None:
+                return self.cached_embedding
+
+            self.cached_embedding = None
+            batch_size, x, orig_ch = self.size
+            pos_x = torch.arange(x).type(self.inv_freq.type())
+            sin_inp_x = torch.einsum("i,j->ij", pos_x, self.inv_freq)
+            emb_x = torch.cat((sin_inp_x.sin(), sin_inp_x.cos()), dim=-1)
+            embedding = torch.zeros((x, self.channels))
+            embedding[:, : self.channels] = emb_x
+
+            self.cached_embedding = embedding[None, :, :orig_ch].repeat(batch_size, 1, 1)
+
+        if self.plot:
+            plt.imshow(self.cached_embedding.numpy()[0,:,:], cmap='hot', interpolation='nearest')
+            plt.show()
+
+        return self.cached_embedding
+
+
 class Encoder(nn.Module):
     def __init__(self, config, vis):
         super(Encoder, self).__init__()
@@ -284,14 +341,8 @@ class VisionTransformer(nn.Module):
                 nn.init.zeros_(self.head.bias)
 
             self.transformer.embeddings.cls_token.copy_(torch.rand(self.transformer.embeddings.cls_token.size()))
-            if pos_encoding == "random":
-                self.transformer.embeddings.position_embeddings.copy_(
-                    torch.rand(
-                        self.transformer.embeddings.position_embeddings.size()))
-            elif pos_encoding == "zeros":
-                self.transformer.embeddings.position_embeddings.copy_(
-                    torch.zeros(
-                        self.transformer.embeddings.position_embeddings.size()))
+            encoding = PosEncoding(self.transformer.embeddings.position_embeddings.size(), pos_encoding)
+            self.transformer.embeddings.position_embeddings.copy_(encoding())
 
     def load_from(self, weights):
         # this loads in the pretrained model

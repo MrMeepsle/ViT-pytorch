@@ -294,7 +294,7 @@ def main():
                         help="Loss scaling to improve fp16 numeric stability. Only used when fp16 set to True.\n"
                              "0 (default value): dynamic loss scaling.\n"
                              "Positive power of 2: static loss scaling value.\n")
-    parser.add_argument("--pos_encoding", choices=["zeros", "random"],
+    parser.add_argument("--pos_encoding", choices=["zeros", "random","sin_cos"],
                         default="zeros",
                         help="Positional encoding used for the transformer input.")
     args = parser.parse_args()
