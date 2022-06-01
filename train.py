@@ -1,6 +1,8 @@
 # coding=utf-8
 from __future__ import absolute_import, division, print_function
 
+import sys
+
 import argparse
 import logging
 import os
@@ -19,6 +21,8 @@ from models.modeling import VisionTransformer, CONFIGS
 from utils.data_utils import get_loader
 from utils.dist_util import get_world_size
 from utils.scheduler import WarmupLinearSchedule, WarmupCosineSchedule
+
+import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +139,8 @@ def valid(args, model, writer, test_loader, global_step):
     logger.info("Valid Loss: %2.5f" % eval_losses.avg)
     logger.info("Valid Accuracy: %2.5f" % accuracy)
 
+
+
     writer.add_scalar("test/accuracy", scalar_value=accuracy, global_step=global_step)
     return accuracy
 
@@ -184,6 +190,10 @@ def train(args, model):
     set_seed(args)  # Added here for reproducibility (even between python 2 and 3)
     losses = AverageMeter()
     global_step, best_acc = 0, 0
+
+    ## list of accuracies to plot training
+    accuracy_list = []
+
     while True:
         model.train()
         epoch_iterator = tqdm(train_loader,
@@ -223,6 +233,7 @@ def train(args, model):
                     writer.add_scalar("train/lr", scalar_value=scheduler.get_lr()[0], global_step=global_step)
                 if global_step % args.eval_every == 0 and args.local_rank in [-1, 0]:
                     accuracy = valid(args, model, writer, test_loader, global_step)
+                    accuracy_list.append(accuracy)
                     if best_acc < accuracy:
                         save_model(args, model)
                         best_acc = accuracy
@@ -238,6 +249,12 @@ def train(args, model):
         writer.close()
     logger.info("Best Accuracy: \t%f" % best_acc)
     logger.info("End Training!")
+
+
+    ## dict of accuracies to plot training
+    print('All accuracies of the training: ', accuracy_list)
+
+    return accuracy_list
 
 
 def main(pos):
@@ -270,7 +287,7 @@ def main(pos):
                         help="The initial learning rate for SGD.")
     parser.add_argument("--weight_decay", default=0, type=float,
                         help="Weight deay if we apply some.")
-    parser.add_argument("--num_steps", default=100, type=int,
+    parser.add_argument("--num_steps", default=500, type=int,
                         help="Total number of training epochs to perform.")
     parser.add_argument("--decay_type", choices=["cosine", "linear"], default="cosine",
                         help="How to decay the learning rate.")
@@ -294,7 +311,7 @@ def main(pos):
                         help="Loss scaling to improve fp16 numeric stability. Only used when fp16 set to True.\n"
                              "0 (default value): dynamic loss scaling.\n"
                              "Positive power of 2: static loss scaling value.\n")
-    parser.add_argument("--pos_encoding", choices=["zeros", "random","sin_cos","arctan","linear"],
+    parser.add_argument("--pos_encoding", choices=["zeros", "random","sin_cos","arctan","RPEsin","linear"],
                         default=pos,
                         help="Positional encoding used for the transformer input.")
     args = parser.parse_args()
@@ -325,10 +342,26 @@ def main(pos):
     args, model = setup(args)
 
     # Training
-    train(args, model)
-
+    accuracies = train(args, model)
+    return accuracies
 
 if __name__ == "__main__":
-    pos_encodings = ["zeros", "random","sin_cos","arctan","linear"]
-    for pos in pos_encodings:
-        main(pos)
+    
+    if ('--pos_encoding') in sys.argv:
+        print("PASSED IF STATEMENT")
+        accuracies = main('random')
+    else:
+        print("DOES LOOP OVER ALL POS_ENCODINGS")
+        pos_encodings = ["zeros", "random","sin_cos","arctan","RPEsin","linear"]
+        plot_dict = []
+
+        for pos in pos_encodings:
+            accuracies_pos = main(pos)
+            print("returned accuracies: ", accuracies_pos)
+            plot_dict.append(list(accuracies_pos))
+            plt.plot([100,200,300,400,500], accuracies_pos, label = pos)
+        
+        print(plot_dict)
+        plt.legend()
+        plt.savefig('./accuracy_iterations.png')
+        plt.show()

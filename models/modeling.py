@@ -256,6 +256,15 @@ class PosEncoding(nn.Module):
             self.channels = output_channels
             self.alpha = 10
 
+        elif (self.type == "RPEsin"):
+            """
+            Adapted from https://github.com/tatp22/multidim-positional-encoding
+            License: https://github.com/tatp22/multidim-positional-encoding/blob/master/LICENSE
+            """
+            output_channels = int(np.ceil(self.size[-1] / 2) * 2)
+            self.channels = output_channels
+            self.alpha = 10
+
         elif (self.type == "linear"):
             """
             Adapted from https://github.com/tatp22/multidim-positional-encoding
@@ -310,6 +319,25 @@ class PosEncoding(nn.Module):
 
             self.cached_embedding = embedding[None, :, :self.channels].repeat(batch_size, 1, 1)
 
+        elif (self.type == "RPEsin"):
+            """
+            :param tensor: A 3d tensor of size (batch_size, x, ch)
+            :return: Positional Encoding Matrix of size (batch_size, x, ch)
+            """
+            if self.cached_embedding is not None:
+                return self.cached_embedding
+
+            self.cached_embedding = None
+            batch_size, x, orig_ch = self.size ## x = amount of inputs, orig_ch = input dimension
+            embedding = torch.zeros((x, self.channels))
+            for i in range(x):
+                for j in range(orig_ch):
+                    embedding[i,j] = np.sin((j-i)/(10000**(2*i/orig_ch)))
+
+            # embedding[:, : self.channels] = emb_x
+
+            self.cached_embedding = embedding[None, :, :self.channels].repeat(batch_size, 1, 1)
+
         elif (self.type == "linear"):
             """
             :param tensor: A 3d tensor of size (batch_size, x, ch)
@@ -329,9 +357,9 @@ class PosEncoding(nn.Module):
 
             self.cached_embedding = embedding[None, :, :orig_ch].repeat(batch_size, 1, 1)
 
-        if self.plot:
-            plt.imshow(self.cached_embedding.numpy()[0,:,:], cmap='hot', interpolation='nearest')
-            plt.show()
+        # if self.plot:
+        #     plt.imshow(self.cached_embedding.numpy()[0,:,:], cmap='hot', interpolation='nearest')
+        #     plt.show()
 
         return self.cached_embedding
 
