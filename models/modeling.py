@@ -141,7 +141,9 @@ class Embeddings(nn.Module):
                                        out_channels=config.hidden_size,
                                        kernel_size=patch_size,
                                        stride=patch_size)
-        self.position_embeddings = nn.Parameter(torch.zeros(1, n_patches + 1, config.hidden_size), requires_grad=False)
+
+        
+        self.position_embeddings = nn.Parameter(torch.zeros(1, n_patches + 1, config.hidden_size), requires_grad=True)
         self.cls_token = nn.Parameter(torch.zeros(1, 1, config.hidden_size))
 
         self.dropout = Dropout(config.transformer["dropout_rate"])

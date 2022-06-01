@@ -318,6 +318,13 @@ def main():
     # Set seed
     set_seed(args)
 
+    positional_encodings = [
+        "sinus_10000",
+        "sinus_100",
+        "BERT",
+
+    ]
+
     # Model & Tokenizer Setup
     args, model = setup(args)
 
