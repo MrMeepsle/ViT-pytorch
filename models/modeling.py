@@ -279,10 +279,21 @@ class VisionTransformer(nn.Module):
         else:
             return logits, attn_weights
 
-    def init_from_scratch(self):
-        if self.zero_head:
-            nn.init.zeros_(self.head.weight)
-            nn.init.zeros_(self.head.bias)
+    def init_from_scratch(self, pos_encoding):
+        with torch.no_grad():
+            if self.zero_head:
+                nn.init.zeros_(self.head.weight)
+                nn.init.zeros_(self.head.bias)
+
+            self.transformer.embeddings.cls_token.copy_(torch.rand(self.transformer.embeddings.cls_token.size()))
+            if pos_encoding == "random":
+                self.transformer.embeddings.position_embeddings.copy_(
+                    torch.rand(
+                        self.transformer.embeddings.position_embeddings.size()))
+            elif pos_encoding == "zeros":
+                self.transformer.embeddings.position_embeddings.copy_(
+                    torch.zeros(
+                        self.transformer.embeddings.position_embeddings.size()))
 
     def load_from(self, weights):
         # this loads in the pretrained model
