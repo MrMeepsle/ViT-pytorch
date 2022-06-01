@@ -67,7 +67,7 @@ def setup(args):
     if (args.pretrained_dir):
         model.load_from(np.load(args.pretrained_dir))
     else:
-        model.init_from_scratch(args.pos_encoding)
+        model.init_from_scratch(args.pos_encoding, args.encoding_type)
     model.to(args.device)
     num_params = count_parameters(model)
 
@@ -311,8 +311,11 @@ def main(pos):
                         help="Loss scaling to improve fp16 numeric stability. Only used when fp16 set to True.\n"
                              "0 (default value): dynamic loss scaling.\n"
                              "Positive power of 2: static loss scaling value.\n")
-    parser.add_argument("--pos_encoding", choices=["zeros", "random","sin_cos","arctan","RPEsin","linear"],
-                        default=pos,
+    parser.add_argument("--pos_encoding", choices=["zeros", "random", "sin_cos", "arctan", "linear"],
+                        default="zeros",
+                        help="Positional encoding used for the transformer input.")
+    parser.add_argument("--encoding_type", choices=["relative", "absolute"],
+                        default="absolute",
                         help="Positional encoding used for the transformer input.")
     args = parser.parse_args()
 
