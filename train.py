@@ -240,10 +240,10 @@ def train(args, model):
     logger.info("End Training!")
 
 
-def main():
+def main(pos):
     parser = argparse.ArgumentParser()
     # Required parameters
-    parser.add_argument("--name", required=True,
+    parser.add_argument("--name", default=pos,
                         help="Name of this run. Used for monitoring.")
     parser.add_argument("--dataset", choices=["cifar10", "cifar100", "mnist", "mnist_fashion"], default="mnist",
                         help="Which downstream task.")
@@ -270,7 +270,7 @@ def main():
                         help="The initial learning rate for SGD.")
     parser.add_argument("--weight_decay", default=0, type=float,
                         help="Weight deay if we apply some.")
-    parser.add_argument("--num_steps", default=10000, type=int,
+    parser.add_argument("--num_steps", default=100, type=int,
                         help="Total number of training epochs to perform.")
     parser.add_argument("--decay_type", choices=["cosine", "linear"], default="cosine",
                         help="How to decay the learning rate.")
@@ -294,8 +294,8 @@ def main():
                         help="Loss scaling to improve fp16 numeric stability. Only used when fp16 set to True.\n"
                              "0 (default value): dynamic loss scaling.\n"
                              "Positive power of 2: static loss scaling value.\n")
-    parser.add_argument("--pos_encoding", choices=["zeros", "random","sin_cos"],
-                        default="zeros",
+    parser.add_argument("--pos_encoding", choices=["zeros", "random","sin_cos","arctan","linear"],
+                        default=pos,
                         help="Positional encoding used for the transformer input.")
     args = parser.parse_args()
 
@@ -329,4 +329,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    pos_encodings = ["zeros", "random","sin_cos","arctan","linear"]
+    for pos in pos_encodings:
+        main(pos)

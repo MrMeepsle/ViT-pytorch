@@ -234,7 +234,7 @@ class PosEncoding(nn.Module):
         super(PosEncoding, self).__init__()
         self.type = type
         self.plot = plot
-        self.size = size
+        self.size = size  ### Size of input dimension
 
         self.cached_embedding = None
 
@@ -243,12 +243,29 @@ class PosEncoding(nn.Module):
             Adapted from https://github.com/tatp22/multidim-positional-encoding
             License: https://github.com/tatp22/multidim-positional-encoding/blob/master/LICENSE
             """
-
             output_channels = int(np.ceil(self.size[-1] / 2) * 2)
             self.channels = output_channels
             inv_freq = 1.0 / (10000 ** (torch.arange(0, output_channels, 2).float() / output_channels))
             self.register_buffer("inv_freq", inv_freq)
+        elif (self.type == "arctan"):
+            """
+            Adapted from https://github.com/tatp22/multidim-positional-encoding
+            License: https://github.com/tatp22/multidim-positional-encoding/blob/master/LICENSE
+            """
+            output_channels = int(np.ceil(self.size[-1] / 2) * 2)
+            self.channels = output_channels
+            self.alpha = 10
 
+        elif (self.type == "linear"):
+            """
+            Adapted from https://github.com/tatp22/multidim-positional-encoding
+            License: https://github.com/tatp22/multidim-positional-encoding/blob/master/LICENSE
+            """
+            output_channels = int(np.ceil(self.size[-1] / 2) * 2)
+            self.channels = output_channels
+            self.alpha = 4
+            self.beta = 0.2
+        
     def forward(self):
         if (self.type == "zeros"):
             self.cached_embedding = torch.zeros(self.size)
@@ -271,6 +288,44 @@ class PosEncoding(nn.Module):
             emb_x = torch.cat((sin_inp_x.sin(), sin_inp_x.cos()), dim=-1)
             embedding = torch.zeros((x, self.channels))
             embedding[:, : self.channels] = emb_x
+
+            self.cached_embedding = embedding[None, :, :orig_ch].repeat(batch_size, 1, 1)
+
+        elif (self.type == "arctan"):
+            """
+            :param tensor: A 3d tensor of size (batch_size, x, ch)
+            :return: Positional Encoding Matrix of size (batch_size, x, ch)
+            """
+            if self.cached_embedding is not None:
+                return self.cached_embedding
+
+            self.cached_embedding = None
+            batch_size, x, orig_ch = self.size ## x = amount of inputs, orig_ch = input dimension
+            embedding = torch.zeros((x, self.channels))
+            for i in range(x):
+                for j in range(orig_ch):
+                    embedding[i,j] = np.pi/2 - abs(np.arctan((i)-(j)/self.alpha))
+
+            # embedding[:, : self.channels] = emb_x
+
+            self.cached_embedding = embedding[None, :, :self.channels].repeat(batch_size, 1, 1)
+
+        elif (self.type == "linear"):
+            """
+            :param tensor: A 3d tensor of size (batch_size, x, ch)
+            :return: Positional Encoding Matrix of size (batch_size, x, ch)
+            """
+            if self.cached_embedding is not None:
+                return self.cached_embedding
+
+            self.cached_embedding = None
+            batch_size, x, orig_ch = self.size ## x = amount of inputs, orig_ch = input dimension
+            embedding = torch.zeros((x, self.channels))
+            for i in range(x):
+                for j in range(orig_ch):
+                    embedding[i,j] = self.alpha*i+self.beta*j
+
+            # embedding[:, : self.channels] = emb_x
 
             self.cached_embedding = embedding[None, :, :orig_ch].repeat(batch_size, 1, 1)
 
