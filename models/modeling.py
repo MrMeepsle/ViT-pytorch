@@ -45,7 +45,7 @@ ACT2FN = {"gelu": torch.nn.functional.gelu, "relu": torch.nn.functional.relu, "s
 
 
 class Attention(nn.Module):
-    def __init__(self, config, vis):
+    def __init__(self, config, vis, img_size):
         super(Attention, self).__init__()
         self.vis = vis
         self.num_attention_heads = config.transformer["num_heads"]
@@ -55,6 +55,17 @@ class Attention(nn.Module):
         self.query = Linear(config.hidden_size, self.all_head_size)
         self.key = Linear(config.hidden_size, self.all_head_size)
         self.value = Linear(config.hidden_size, self.all_head_size)
+
+        img_size = _pair(img_size)
+
+        if config.patches.get("grid") is not None:
+            self.n_patches = (img_size[0] // 16) * (img_size[1] // 16)
+        else:
+            patch_size = _pair(config.patches["size"])
+            self.n_patches = (img_size[0] // patch_size[0]) * (img_size[1] // patch_size[1])
+
+        self.relative_pos_embedding = nn.Parameter(torch.zeros(1, self.n_patches + 1, config.hidden_size),
+                                                   requires_grad=False)
 
         self.out = Linear(config.hidden_size, config.hidden_size)
         self.attn_dropout = Dropout(config.transformer["attention_dropout_rate"])
@@ -69,8 +80,10 @@ class Attention(nn.Module):
 
     def forward(self, hidden_states):
         mixed_query_layer = self.query(hidden_states)
-        mixed_key_layer = self.key(hidden_states)
-        mixed_value_layer = self.value(hidden_states)
+        B = mixed_query_layer.shape[0]
+        relative_pos_embedding = self.relative_pos_embedding.expand(B, -1, -1)
+        mixed_key_layer = self.key(hidden_states) + relative_pos_embedding
+        mixed_value_layer = self.value(hidden_states) + relative_pos_embedding
 
         query_layer = self.transpose_for_scores(mixed_query_layer)
         key_layer = self.transpose_for_scores(mixed_key_layer)
@@ -165,13 +178,13 @@ class Embeddings(nn.Module):
 
 
 class Block(nn.Module):
-    def __init__(self, config, vis):
+    def __init__(self, config, vis, img_size):
         super(Block, self).__init__()
         self.hidden_size = config.hidden_size
         self.attention_norm = LayerNorm(config.hidden_size, eps=1e-6)
         self.ffn_norm = LayerNorm(config.hidden_size, eps=1e-6)
         self.ffn = Mlp(config)
-        self.attn = Attention(config, vis)
+        self.attn = Attention(config, vis, img_size)
 
     def forward(self, x):
         h = x
@@ -257,15 +270,11 @@ class PosEncoding(nn.Module):
             self.alpha = 10
 
         elif (self.type == "linear"):
-            """
-            Adapted from https://github.com/tatp22/multidim-positional-encoding
-            License: https://github.com/tatp22/multidim-positional-encoding/blob/master/LICENSE
-            """
             output_channels = int(np.ceil(self.size[-1] / 2) * 2)
             self.channels = output_channels
             self.alpha = 4
             self.beta = 0.2
-        
+
     def forward(self):
         if (self.type == "zeros"):
             self.cached_embedding = torch.zeros(self.size)
@@ -300,11 +309,11 @@ class PosEncoding(nn.Module):
                 return self.cached_embedding
 
             self.cached_embedding = None
-            batch_size, x, orig_ch = self.size ## x = amount of inputs, orig_ch = input dimension
+            batch_size, x, orig_ch = self.size  ## x = amount of inputs, orig_ch = input dimension
             embedding = torch.zeros((x, self.channels))
             for i in range(x):
                 for j in range(orig_ch):
-                    embedding[i,j] = np.pi/2 - abs(np.arctan((i)-(j)/self.alpha))
+                    embedding[i, j] = np.pi / 2 - abs(np.arctan((i) - (j) / self.alpha))
 
             # embedding[:, : self.channels] = emb_x
 
@@ -319,31 +328,32 @@ class PosEncoding(nn.Module):
                 return self.cached_embedding
 
             self.cached_embedding = None
-            batch_size, x, orig_ch = self.size ## x = amount of inputs, orig_ch = input dimension
+            batch_size, x, orig_ch = self.size  ## x = amount of inputs, orig_ch = input dimension
             embedding = torch.zeros((x, self.channels))
             for i in range(x):
                 for j in range(orig_ch):
-                    embedding[i,j] = self.alpha*i+self.beta*j
+                    embedding[i, j] = self.alpha * i + self.beta * j
 
-            # embedding[:, : self.channels] = emb_x
+            embedding = embedding * (1 / (torch.max(embedding) + 10 ** -3))
 
             self.cached_embedding = embedding[None, :, :orig_ch].repeat(batch_size, 1, 1)
 
         if self.plot:
-            plt.imshow(self.cached_embedding.numpy()[0,:,:], cmap='hot', interpolation='nearest')
+            plt.imshow(self.cached_embedding.numpy()[0, :, :], cmap='hot', interpolation='nearest')
             plt.show()
+            plt.clf()
 
         return self.cached_embedding
 
 
 class Encoder(nn.Module):
-    def __init__(self, config, vis):
+    def __init__(self, config, vis, img_size):
         super(Encoder, self).__init__()
         self.vis = vis
         self.layer = nn.ModuleList()
         self.encoder_norm = LayerNorm(config.hidden_size, eps=1e-6)
         for _ in range(config.transformer["num_layers"]):
-            layer = Block(config, vis)
+            layer = Block(config, vis, img_size)
             self.layer.append(copy.deepcopy(layer))
 
     def forward(self, hidden_states):
@@ -360,7 +370,7 @@ class Transformer(nn.Module):
     def __init__(self, config, img_size, vis):
         super(Transformer, self).__init__()
         self.embeddings = Embeddings(config, img_size=img_size)
-        self.encoder = Encoder(config, vis)
+        self.encoder = Encoder(config, vis, img_size)
 
     def forward(self, input_ids):
         embedding_output = self.embeddings(input_ids)
@@ -389,15 +399,23 @@ class VisionTransformer(nn.Module):
         else:
             return logits, attn_weights
 
-    def init_from_scratch(self, pos_encoding):
+    def init_from_scratch(self, pos_encoding, encoding_type):
         with torch.no_grad():
             if self.zero_head:
                 nn.init.zeros_(self.head.weight)
                 nn.init.zeros_(self.head.bias)
 
             self.transformer.embeddings.cls_token.copy_(torch.rand(self.transformer.embeddings.cls_token.size()))
-            encoding = PosEncoding(self.transformer.embeddings.position_embeddings.size(), pos_encoding)
-            self.transformer.embeddings.position_embeddings.copy_(encoding())
+
+            if (encoding_type == "absolute"):
+                encoding = PosEncoding(self.transformer.embeddings.position_embeddings.size(), pos_encoding)
+                self.transformer.embeddings.position_embeddings.copy_(encoding())
+            elif (encoding_type == "relative"):
+
+                for bname, block in self.transformer.encoder.named_children():
+                    for uname, unit in block.named_children():
+                        encoding = PosEncoding(unit.attn.relative_pos_embedding.size(), pos_encoding)
+                        unit.attn.relative_pos_embedding.copy_(encoding())
 
     def load_from(self, weights):
         # this loads in the pretrained model

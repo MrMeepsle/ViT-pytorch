@@ -63,7 +63,7 @@ def setup(args):
     if (args.pretrained_dir):
         model.load_from(np.load(args.pretrained_dir))
     else:
-        model.init_from_scratch(args.pos_encoding)
+        model.init_from_scratch(args.pos_encoding, args.encoding_type)
     model.to(args.device)
     num_params = count_parameters(model)
 
@@ -270,7 +270,7 @@ def main(pos):
                         help="The initial learning rate for SGD.")
     parser.add_argument("--weight_decay", default=0, type=float,
                         help="Weight deay if we apply some.")
-    parser.add_argument("--num_steps", default=100, type=int,
+    parser.add_argument("--num_steps", default=10000, type=int,
                         help="Total number of training epochs to perform.")
     parser.add_argument("--decay_type", choices=["cosine", "linear"], default="cosine",
                         help="How to decay the learning rate.")
@@ -294,8 +294,11 @@ def main(pos):
                         help="Loss scaling to improve fp16 numeric stability. Only used when fp16 set to True.\n"
                              "0 (default value): dynamic loss scaling.\n"
                              "Positive power of 2: static loss scaling value.\n")
-    parser.add_argument("--pos_encoding", choices=["zeros", "random","sin_cos","arctan","linear"],
-                        default=pos,
+    parser.add_argument("--pos_encoding", choices=["zeros", "random", "sin_cos", "arctan", "linear"],
+                        default="zeros",
+                        help="Positional encoding used for the transformer input.")
+    parser.add_argument("--encoding_type", choices=["relative", "absolute"],
+                        default="absolute",
                         help="Positional encoding used for the transformer input.")
     args = parser.parse_args()
 
@@ -329,6 +332,6 @@ def main(pos):
 
 
 if __name__ == "__main__":
-    pos_encodings = ["zeros", "random","sin_cos","arctan","linear"]
+    pos_encodings = ["zeros", "random", "sin_cos", "arctan", "linear"]
     for pos in pos_encodings:
         main(pos)
