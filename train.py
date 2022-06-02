@@ -257,7 +257,7 @@ def train(args, model):
     return accuracy_list
 
 
-def main(pos):
+def main(pos, seed):
     parser = argparse.ArgumentParser()
     # Required parameters
     parser.add_argument("--name", default=pos,
@@ -298,7 +298,7 @@ def main(pos):
 
     parser.add_argument("--local_rank", type=int, default=-1,
                         help="local_rank for distributed training on gpus")
-    parser.add_argument('--seed', type=int, default=42,
+    parser.add_argument('--seed', type=int, default=seed,
                         help="random seed for initialization")
     parser.add_argument('--gradient_accumulation_steps', type=int, default=1,
                         help="Number of updates steps to accumulate before performing a backward/update pass.")
@@ -349,7 +349,7 @@ def main(pos):
     return accuracies
 
 if __name__ == "__main__":
-    num_steps = 1000
+    num_steps = 10000
     print(num_steps)
     if ('--pos_encoding') in sys.argv:
         print("PASSED IF STATEMENT")
@@ -359,13 +359,14 @@ if __name__ == "__main__":
         pos_encodings = ["zeros", "random","sin_cos","arctan","RPEsin","linear"]
         plot_dict = []
         x_axis = np.arange(100,num_steps+100,100)
-        for pos in pos_encodings:
-            accuracies_pos = main(pos)
-            print("returned accuracies: ", accuracies_pos)
-            plot_dict.append(list(accuracies_pos))
-            plt.plot(x_axis, accuracies_pos, label = pos)
-        
-        print(plot_dict)
-        plt.legend()
-        plt.savefig('./accuracy_iterations.png')
-        plt.show()
+        for seed in [42,69,99]:
+            for pos in pos_encodings:
+                accuracies_pos = main(pos,seed)
+                print("returned accuracies: ", accuracies_pos)
+                plot_dict.append(list(accuracies_pos))
+                plt.plot(x_axis, accuracies_pos, label = pos)
+            
+            print(plot_dict)
+            plt.legend()
+            plt.savefig('./accuracy_iterations'+str(seed)+'.png')
+            plt.show()
