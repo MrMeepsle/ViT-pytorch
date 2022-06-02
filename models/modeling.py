@@ -355,11 +355,14 @@ class PosEncoding(nn.Module):
 
             # embedding[:, : self.channels] = emb_x
 
+            embedding = embedding * (1/(torch.max(embedding)+10**-3))
+
             self.cached_embedding = embedding[None, :, :orig_ch].repeat(batch_size, 1, 1)
 
-        # if self.plot:
-        #     plt.imshow(self.cached_embedding.numpy()[0,:,:], cmap='hot', interpolation='nearest')
-        #     plt.show()
+        if self.plot:
+            plt.imshow(self.cached_embedding.numpy()[0,:,:], cmap='hot', interpolation='nearest')
+            plt.show()
+            plt.clf()
 
         return self.cached_embedding
 
