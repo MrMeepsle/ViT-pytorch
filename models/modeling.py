@@ -368,10 +368,10 @@ class PosEncoding(nn.Module):
 
             self.cached_embedding = embedding[None, :, :orig_ch].repeat(batch_size, 1, 1)
 
-        if self.plot:
-            plt.imshow(self.cached_embedding.numpy()[0, :, :], cmap='hot', interpolation='nearest')
-            plt.show()
-            plt.clf()
+        # if self.plot:
+        #     plt.imshow(self.cached_embedding.numpy()[0, :, :], cmap='hot', interpolation='nearest')
+        #     plt.show()
+        #     plt.clf()
 
         return self.cached_embedding
 

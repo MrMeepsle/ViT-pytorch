@@ -287,7 +287,7 @@ def main(pos):
                         help="The initial learning rate for SGD.")
     parser.add_argument("--weight_decay", default=0, type=float,
                         help="Weight deay if we apply some.")
-    parser.add_argument("--num_steps", default=1000, type=int,
+    parser.add_argument("--num_steps", default=10000, type=int,
                         help="Total number of training epochs to perform.")
     parser.add_argument("--decay_type", choices=["cosine", "linear"], default="cosine",
                         help="How to decay the learning rate.")
@@ -349,7 +349,8 @@ def main(pos):
     return accuracies
 
 if __name__ == "__main__":
-    
+    num_steps = 1000
+    print(num_steps)
     if ('--pos_encoding') in sys.argv:
         print("PASSED IF STATEMENT")
         accuracies = main('random')
@@ -357,12 +358,12 @@ if __name__ == "__main__":
         print("DOES LOOP OVER ALL POS_ENCODINGS")
         pos_encodings = ["zeros", "random","sin_cos","arctan","RPEsin","linear"]
         plot_dict = []
-
+        x_axis = np.arange(100,num_steps+100,100)
         for pos in pos_encodings:
             accuracies_pos = main(pos)
             print("returned accuracies: ", accuracies_pos)
             plot_dict.append(list(accuracies_pos))
-            plt.plot([100,200,300,400,500], accuracies_pos, label = pos)
+            plt.plot(x_axis, accuracies_pos, label = pos)
         
         print(plot_dict)
         plt.legend()
