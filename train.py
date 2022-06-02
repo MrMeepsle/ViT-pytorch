@@ -349,7 +349,7 @@ def main(pos, seed):
     return accuracies
 
 if __name__ == "__main__":
-    num_steps = 10000
+    num_steps = 2000
     if ('--pos_encoding') in sys.argv:
         print("PASSED IF STATEMENT")
         accuracies = main('random', 42)
