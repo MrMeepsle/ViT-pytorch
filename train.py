@@ -312,7 +312,7 @@ def main(pos, seed):
                              "0 (default value): dynamic loss scaling.\n"
                              "Positive power of 2: static loss scaling value.\n")
     parser.add_argument("--pos_encoding", choices=["zeros", "random", "sin_cos", "arctan", "linear"],
-                        default="zeros",
+                        default=pos,
                         help="Positional encoding used for the transformer input.")
     parser.add_argument("--encoding_type", choices=["relative", "absolute"],
                         default="absolute",
@@ -350,7 +350,6 @@ def main(pos, seed):
 
 if __name__ == "__main__":
     num_steps = 10000
-    print(num_steps)
     if ('--pos_encoding') in sys.argv:
         print("PASSED IF STATEMENT")
         accuracies = main('random')
@@ -359,14 +358,18 @@ if __name__ == "__main__":
         pos_encodings = ["zeros", "random","sin_cos","arctan","RPEsin","linear"]
         plot_dict = []
         x_axis = np.arange(100,num_steps+100,100)
-        for seed in [42,69,99]:
-            for pos in pos_encodings:
-                accuracies_pos = main(pos,seed)
-                print("returned accuracies: ", accuracies_pos)
-                plot_dict.append(list(accuracies_pos))
-                plt.plot(x_axis, accuracies_pos, label = pos)
+        seeds = [42,3,24]
+        for pos in pos_encodings:
+            accuracies_pos = main(pos,seeds[0])
+            print("returned accuracies: ", accuracies_pos)
+            plot_dict.append(list(accuracies_pos))
             
-            print(plot_dict)
-            plt.legend()
-            plt.savefig('./accuracy_iterations'+str(seed)+'.png')
-            plt.show()
+        plot_dict = np.array(plot_dict)
+        print(plot_dict)
+        for i in range(plot_dict.shape[0]):
+            plt.plot(x_axis, plot_dict[i], label = pos_encodings[i])
+
+        np.save('./metrics/accuracies', plot_dict)
+        plt.legend()
+        plt.savefig('./accuracy_iterations'+str(seeds[0])+'.png')
+        plt.show()
