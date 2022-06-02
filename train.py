@@ -311,7 +311,7 @@ def main(pos, seed):
                         help="Loss scaling to improve fp16 numeric stability. Only used when fp16 set to True.\n"
                              "0 (default value): dynamic loss scaling.\n"
                              "Positive power of 2: static loss scaling value.\n")
-    parser.add_argument("--pos_encoding", choices=["zeros", "random", "sin_cos", "arctan", "linear"],
+    parser.add_argument("--pos_encoding", choices=["zeros", "random", "sin_cos", "arctan","RPEsin", "linear"],
                         default=pos,
                         help="Positional encoding used for the transformer input.")
     parser.add_argument("--encoding_type", choices=["relative", "absolute"],
@@ -352,7 +352,7 @@ if __name__ == "__main__":
     num_steps = 10000
     if ('--pos_encoding') in sys.argv:
         print("PASSED IF STATEMENT")
-        accuracies = main('random')
+        accuracies = main('random', 42)
     else:
         print("DOES LOOP OVER ALL POS_ENCODINGS")
         pos_encodings = ["zeros", "random","sin_cos","arctan","RPEsin","linear"]
@@ -360,7 +360,7 @@ if __name__ == "__main__":
         x_axis = np.arange(100,num_steps+100,100)
         seeds = [42,3,24]
         for pos in pos_encodings:
-            accuracies_pos = main(pos,seeds[0])
+            accuracies_pos = main(pos,seeds[1])
             print("returned accuracies: ", accuracies_pos)
             plot_dict.append(list(accuracies_pos))
             
