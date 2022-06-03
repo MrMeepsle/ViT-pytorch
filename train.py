@@ -358,7 +358,7 @@ if __name__ == "__main__":
         pos_encodings = ["zeros", "random","sin_cos","arctan","RPEsin","linear"]
         plot_dict = []
         x_axis = np.arange(100,num_steps+100,100)
-        seed = 3
+        seed = 24
         for pos in pos_encodings:
             accuracies_pos = main(pos,seed)
             print("returned accuracies: ", accuracies_pos)
