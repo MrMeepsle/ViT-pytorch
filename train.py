@@ -358,9 +358,9 @@ if __name__ == "__main__":
         pos_encodings = ["zeros", "random","sin_cos","arctan","RPEsin","linear"]
         plot_dict = []
         x_axis = np.arange(100,num_steps+100,100)
-        seeds = [42,3,24]
+        seed = 3
         for pos in pos_encodings:
-            accuracies_pos = main(pos,seeds[1])
+            accuracies_pos = main(pos,seed)
             print("returned accuracies: ", accuracies_pos)
             plot_dict.append(list(accuracies_pos))
             
@@ -371,5 +371,5 @@ if __name__ == "__main__":
 
         np.save('./metrics/accuracies', plot_dict)
         plt.legend()
-        plt.savefig('./accuracy_iterations'+str(seeds[0])+'.png')
+        plt.savefig('./accuracy_iterations'+str(seed)+'.png')
         plt.show()
