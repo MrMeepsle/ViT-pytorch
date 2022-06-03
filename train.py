@@ -349,7 +349,7 @@ def main(pos, seed):
     return accuracies
 
 if __name__ == "__main__":
-    num_steps = 2000
+    num_steps = 10000
     if ('--pos_encoding') in sys.argv:
         print("PASSED IF STATEMENT")
         accuracies = main('random', 42)
@@ -358,18 +358,20 @@ if __name__ == "__main__":
         pos_encodings = ["zeros", "random","sin_cos","arctan","RPEsin","linear"]
         plot_dict = []
         x_axis = np.arange(100,num_steps+100,100)
-        seed = 24
-        for pos in pos_encodings:
-            accuracies_pos = main(pos,seed)
-            print("returned accuracies: ", accuracies_pos)
-            plot_dict.append(list(accuracies_pos))
-            
-        plot_dict = np.array(plot_dict)
-        print(plot_dict)
-        for i in range(plot_dict.shape[0]):
-            plt.plot(x_axis, plot_dict[i], label = pos_encodings[i])
-
-        np.save('./metrics/accuracies', plot_dict)
-        plt.legend()
-        plt.savefig('./accuracy_iterations'+str(seed)+'.png')
-        plt.show()
+        seeds = [3,24,42]
+        for seed in seeds:
+            for pos in pos_encodings:
+                accuracies_pos = main(pos,seed)
+                print("returned accuracies: ", accuracies_pos)
+                plot_dict.append(list(accuracies_pos))
+                
+            plot_dict = np.array(plot_dict)
+            print(plot_dict)
+            for i in range(plot_dict.shape[0]):
+                plt.plot(x_axis, plot_dict[i], label = pos_encodings[i])
+                
+            np.save('./metrics/accuracies'+str(seed)+'_'+str(num_steps), plot_dict)
+            plt.legend()
+            plt.savefig('./accuracy_iterations'+str(seed)+'_'+str(num_steps)+'.png')
+            # plt.show()
+            plt.clf()
