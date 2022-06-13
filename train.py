@@ -356,10 +356,10 @@ if __name__ == "__main__":
     else:
         print("DOES LOOP OVER ALL POS_ENCODINGS")
         pos_encodings = ["zeros", "random","sin_cos","arctan","RPEsin","linear"]
-        plot_dict = []
         x_axis = np.arange(100,num_steps+100,100)
-        seeds = [3,24,42]
+        seeds = [24,42]
         for seed in seeds:
+            plot_dict = []
             for pos in pos_encodings:
                 accuracies_pos = main(pos,seed)
                 print("returned accuracies: ", accuracies_pos)
